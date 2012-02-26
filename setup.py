@@ -18,7 +18,7 @@ except ImportError:
     sys.exit(1)
 
 package = 'Pymacs'
-version = '0.24-beta2'
+version = '0.24.3'
 
 setup(name=package, version=version,
       description="Interface between Emacs Lisp and Python",
