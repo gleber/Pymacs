@@ -57,7 +57,7 @@ pymacs.pdf: pymacs.rst.in
 # The following goals for the maintainer of the Pymacs Web site.
 
 ARCHIVES = web/src/archives
-VERSION = `grep '^version' setup.py | sed -e "s/'$$//" -e "s/.*'//"`
+VERSION := $(shell echo `grep '^version' setup.py | sed -e "s/'$$//" -e "s/.*'//"`)
 
 publish: pppp.pdf pymacs.pdf pymacs.rst
 	find -name '*~' | xargs rm -fv
@@ -70,3 +70,12 @@ publish: pppp.pdf pymacs.pdf pymacs.rst
 	make-web -C web
 	synchro push alcyon -d entretien/pymacs
 	ssh alcyon 'make-web -C entretien/pymacs/web'
+
+package: all
+	@rm -rf pymacs-$(VERSION)/ pymacs-$(VERSION).tar
+	@rm -rf build/pymacs-$(VERSION)/ build/pymacs-$(VERSION).tar
+	mkdir -p pymacs-$(VERSION)/lib
+	cp pymacs-pkg.el pymacs.el pymacs-$(VERSION)/
+	cp Pymacs.py pymacs-$(VERSION)/lib/
+	tar cfv pymacs-$(VERSION).tar pymacs-$(VERSION)/*
+	mv pymacs-$(VERSION).tar pymacs-$(VERSION)/ build/
