@@ -41,6 +41,10 @@
   (and (fboundp 'make-hash-table) (fboundp 'gethash) (fboundp 'puthash))
   "Set to t if hash tables are available.")
 
+(defvar pymacs-lib-directory
+  (concat (file-name-directory load-file-name) "lib")
+  "Pymacs lib directory")
+
 (eval-and-compile
 
   ;; pymacs-cancel-timer
@@ -68,7 +72,7 @@
            "Tell XEmacs if STRING should be handled as multibyte."
            (not (member (find-charset-string string) '(nil (ascii))))))
         (t
-         ; Tell XEmacs that STRING is unibyte, when Mule is not around!
+         ;; Tell XEmacs that STRING is unibyte, when Mule is not around!
          (defalias 'pymacs-multibyte-string-p 'ignore)))
 
   ;; pymacs-report-error
@@ -84,7 +88,7 @@
   ;; pymacs-timerp
   (defalias 'pymacs-timerp
     (cond ((fboundp 'timerp) 'timerp)
-         ; XEmacs case - yet having post-gc-hook, this is unused.
+          ;; XEmacs case - yet having post-gc-hook, this is unused.
           ((fboundp 'itimerp) 'itimerp)
           (t 'ignore)))
 
@@ -298,7 +302,7 @@ equivalents, other structures are converted into Lisp handles."
         (inhibit-file-name-operation operation))
     (apply operation arguments)))
 
-;(add-to-list 'file-name-handler-alist '("\\.el\\'" . pymacs-file-handler))
+;;(add-to-list 'file-name-handler-alist '("\\.el\\'" . pymacs-file-handler))
 
 ;;; Gargabe collection of Python IDs.
 
@@ -566,18 +570,22 @@ The timer is used only if `post-gc-hook' is not available.")
       (set-buffer-file-coding-system 'raw-text)
       (save-match-data
         ;; Launch the Pymacs helper.
-        (let ((process
-               (apply 'start-process "pymacs" buffer
-                      (let ((python (getenv "PYMACS_PYTHON")))
-                        (if (or (null python) (equal python ""))
-                            pymacs-python-command
-                          python))
-                      "-c" (concat "import sys;"
-                                   " from Pymacs import main;"
-                                   " main(*sys.argv[1:])")
-                      (append
-                       (and (>= emacs-major-version 24) '("-f"))
-                       (mapcar 'expand-file-name pymacs-load-path)))))
+        (let* ((command
+                (concat "import sys; "
+                        (if (file-exists-p pymacs-lib-directory)
+                            (format "sys.path.append(\"%s\"); " pymacs-lib-directory) "")
+                        "from Pymacs import main; "
+                        "main(*sys.argv[1:]) "))
+               (process
+                (apply 'start-process "pymacs" buffer
+                       (let ((python (getenv "PYMACS_PYTHON")))
+                         (if (or (null python) (equal python ""))
+                             pymacs-python-command
+                           python))
+                       "-c" command
+                       (append
+                        (and (>= emacs-major-version 24) '("-f"))
+                        (mapcar 'expand-file-name pymacs-load-path)))))
           (pymacs-kill-without-query process)
           ;; Receive the synchronising reply.
           (while (progn
@@ -586,7 +594,7 @@ The timer is used only if `post-gc-hook' is not available.")
             (unless (accept-process-output process pymacs-timeout-at-start)
               (pymacs-report-error
                "Pymacs helper did not start within %d seconds"
-                     pymacs-timeout-at-start)))
+               pymacs-timeout-at-start)))
           (let ((marker (process-mark process))
                 (limit-position (+ (match-end 0)
                                    (string-to-number (match-string 1)))))
